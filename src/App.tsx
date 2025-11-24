@@ -153,7 +153,9 @@ function App() {
     // Filter by travel time
     if (filterType !== 'all') {
       filtered = filtered.filter((profile) => {
-        if (!profile.travelTime) return false;
+        if (!profile.travelTime) {
+          return false;
+        }
         
         const timeInMinutes = filterType === 'driving' 
           ? profile.travelTime.driving

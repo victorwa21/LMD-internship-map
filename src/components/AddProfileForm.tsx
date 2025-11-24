@@ -111,16 +111,16 @@ export default function AddProfileForm({ onClose, onProfileAdded }: AddProfileFo
 
       // Parse travel times from form
       // Validation ensures at least one of driving or bus is provided
+      const parseTravelTime = (value: string | undefined): number | undefined => {
+        if (!value || value.trim() === '') return undefined;
+        const parsed = parseInt(value.trim(), 10);
+        return isNaN(parsed) ? undefined : parsed;
+      };
+
       const travelTime = {
-        driving: data.travelTimeDriving && data.travelTimeDriving.trim() !== '' 
-          ? parseInt(data.travelTimeDriving, 10) || 0 
-          : undefined,
-        walking: data.travelTimeWalking && data.travelTimeWalking.trim() !== '' 
-          ? parseInt(data.travelTimeWalking, 10) || 0 
-          : undefined,
-        bus: data.travelTimeBus && data.travelTimeBus.trim() !== '' 
-          ? parseInt(data.travelTimeBus, 10) || 0 
-          : undefined,
+        driving: parseTravelTime(data.travelTimeDriving),
+        walking: parseTravelTime(data.travelTimeWalking),
+        bus: parseTravelTime(data.travelTimeBus),
       };
 
       // Create profile
@@ -141,6 +141,9 @@ export default function AddProfileForm({ onClose, onProfileAdded }: AddProfileFo
       };
 
       const newProfile = createProfile(profileData);
+
+      // Debug: Log the travel time to verify it's being set correctly
+      console.log('New profile travel time:', newProfile.travelTime);
 
       // Don't save to localStorage - keep it temporary (will disappear on refresh)
       // TODO: Later, uncomment this to make profiles permanent:
