@@ -2,24 +2,43 @@ import { useState, useEffect, useCallback } from 'react';
 import Map from './components/Map';
 import ProfileModal from './components/ProfileModal';
 import AddProfileForm from './components/AddProfileForm';
-import TravelTimeFilter from './components/TravelTimeFilter';
-import FieldFilter from './components/FieldFilter';
+import FilterPanel from './components/FilterPanel';
+import CSVUpload from './components/CSVUpload';
+import PasswordPrompt from './components/PasswordPrompt';
 import { StudentProfile } from './types/profile';
 import { getAllProfiles, initializeWithSampleData, saveProfile, deleteProfile } from './services/dataService';
 import { sampleProfiles } from './data/sampleData';
 
 type FilterType = 'all' | 'driving' | 'walking' | 'bus';
 type FilterTime = number; // in minutes
+type LocationType = 'all' | 'physical' | 'remote';
 
 function App() {
+  // Check if we're in read-only mode (via URL parameter)
+  const isReadOnly = new URLSearchParams(window.location.search).get('readonly') === 'true';
+  
+  // Check authentication status
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (isReadOnly) return false;
+    return sessionStorage.getItem('internship_map_authenticated') === 'true';
+  });
+  // Show password prompt on load if not authenticated and not in read-only mode
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(() => {
+    if (isReadOnly) return false;
+    return sessionStorage.getItem('internship_map_authenticated') !== 'true';
+  });
+  
   const [profiles, setProfiles] = useState<StudentProfile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<StudentProfile[]>([]);
+  const [remoteProfiles, setRemoteProfiles] = useState<StudentProfile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<StudentProfile | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [locationType, setLocationType] = useState<LocationType>('all');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterTime, setFilterTime] = useState<FilterTime>(30);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
+  const [showCSVUpload, setShowCSVUpload] = useState(false);
 
   // Load profiles on mount
   useEffect(() => {
@@ -52,6 +71,20 @@ function App() {
       localStorage.setItem(warholMigrationKey, 'true');
     }
     
+    // Ensure remote profiles are included (migration for remote internships)
+    const remoteMigrationKey = 'internship_map_remote_profiles_added';
+    const needsRemoteMigration = !localStorage.getItem(remoteMigrationKey);
+    if (needsRemoteMigration) {
+      const remoteProfiles = sampleProfiles.filter(p => p.isRemote);
+      const existingRemoteIds = loadedProfiles.filter(p => p.isRemote).map(p => p.id);
+      const newRemoteProfiles = remoteProfiles.filter(p => !existingRemoteIds.includes(p.id));
+      if (newRemoteProfiles.length > 0) {
+        loadedProfiles = [...loadedProfiles, ...newRemoteProfiles];
+        newRemoteProfiles.forEach(profile => saveProfile(profile));
+        localStorage.setItem(remoteMigrationKey, 'true');
+      }
+    }
+    
     // Ensure Andy Warhol Museum profile exists
     const hasWarhol = loadedProfiles.some(p => 
       p.internshipCompany === 'Andy Warhol Museum' || p.id === 'sample_9'
@@ -73,6 +106,7 @@ function App() {
           // Try matching by company name and coordinates
           sampleMatch = sampleProfiles.find(s => 
             s.internshipCompany === profile.internshipCompany &&
+            s.coordinates && profile.coordinates &&
             Math.abs(s.coordinates.lat - profile.coordinates.lat) < 0.01 &&
             Math.abs(s.coordinates.lng - profile.coordinates.lng) < 0.01
           );
@@ -99,6 +133,7 @@ function App() {
           // Try matching by company name and coordinates
           sampleMatch = sampleProfiles.find(s => 
             s.internshipCompany === profile.internshipCompany &&
+            s.coordinates && profile.coordinates &&
             Math.abs(s.coordinates.lat - profile.coordinates.lat) < 0.01 &&
             Math.abs(s.coordinates.lng - profile.coordinates.lng) < 0.01
           );
@@ -146,13 +181,28 @@ function App() {
     setShowAddForm(false);
   }, []);
 
-  // Filter profiles based on travel time and fields
-  useEffect(() => {
-    let filtered = profiles;
+  const handleCSVProfilesAdded = useCallback((newProfiles: StudentProfile[]) => {
+    // Add all profiles from CSV to state
+    setProfiles((prev) => [...prev, ...newProfiles]);
+    setShowCSVUpload(false);
+  }, []);
 
-    // Filter by travel time
+  // Filter profiles based on location type, travel time, and fields
+  useEffect(() => {
+    // Get all remote and physical profiles separately
+    const allRemoteProfiles = profiles.filter((profile) => profile.isRemote);
+    let physicalProfiles = profiles.filter((profile) => !profile.isRemote);
+
+    // Filter physical profiles by location type
+    if (locationType === 'remote') {
+      // If only showing remote, don't show any physical on map
+      physicalProfiles = [];
+    }
+    // 'all' and 'physical' both show physical profiles on map
+
+    // Filter physical profiles by travel time (only for non-remote internships)
     if (filterType !== 'all') {
-      filtered = filtered.filter((profile) => {
+      physicalProfiles = physicalProfiles.filter((profile) => {
         if (!profile.travelTime) {
           return false;
         }
@@ -167,69 +217,204 @@ function App() {
       });
     }
 
-    // Filter by fields
+    // Filter physical profiles by fields
     if (selectedFields.length > 0) {
-      filtered = filtered.filter((profile) => 
+      physicalProfiles = physicalProfiles.filter((profile) => 
         selectedFields.includes(profile.field)
       );
     }
 
-    setFilteredProfiles(filtered);
-  }, [profiles, filterType, filterTime, selectedFields]);
+    // Filter remote profiles by location type and fields
+    let remoteProfilesList = allRemoteProfiles;
+    
+    // Filter by location type
+    if (locationType === 'physical') {
+      // If only showing physical, don't show remote in list
+      remoteProfilesList = [];
+    }
+    // 'all' and 'remote' both show remote profiles in list
+    
+    // Filter remote profiles by fields (but NOT by travel time - they don't have addresses)
+    if (selectedFields.length > 0) {
+      remoteProfilesList = remoteProfilesList.filter((profile) => 
+        selectedFields.includes(profile.field)
+      );
+    }
+
+    setFilteredProfiles(physicalProfiles);
+    setRemoteProfiles(remoteProfilesList);
+  }, [profiles, locationType, filterType, filterTime, selectedFields]);
 
 
   const handleCloseModal = useCallback(() => {
     setSelectedProfile(null);
   }, []);
 
+  const handleEditAction = useCallback(() => {
+    if (isReadOnly) {
+      alert('This is a read-only view. Use the edit version to make changes.');
+      return false;
+    }
+    if (!isAuthenticated) {
+      setShowPasswordPrompt(true);
+      return false;
+    }
+    return true;
+  }, [isReadOnly, isAuthenticated]);
+
+  const handlePasswordSuccess = useCallback(() => {
+    setIsAuthenticated(true);
+    setShowPasswordPrompt(false);
+  }, []);
+
+  const handleShareLink = useCallback(() => {
+    const readOnlyUrl = `${window.location.origin}${window.location.pathname}?readonly=true`;
+    navigator.clipboard.writeText(readOnlyUrl).then(() => {
+      alert('Read-only link copied to clipboard!');
+    }).catch(() => {
+      // Fallback if clipboard API fails
+      prompt('Copy this read-only link:', readOnlyUrl);
+    });
+  }, []);
+
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden">
+    <div className="min-h-screen w-screen flex flex-col">
       {/* Header */}
-      <header className="bg-blue-600 text-white shadow-lg z-10">
+      <header className="bg-black text-yellow-400 shadow-lg z-10 flex-shrink-0 sticky top-0">
         <div className="container mx-auto px-4 py-3 md:py-4 flex flex-col md:flex-row justify-between items-center gap-3">
           <h1 className="text-xl md:text-2xl lg:text-3xl font-bold">COBHS Internship Map</h1>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="bg-white text-blue-600 px-4 py-2 rounded-md font-semibold hover:bg-blue-50 transition-colors shadow-md text-sm md:text-base w-full md:w-auto"
-          >
-            + Add Your Profile
-          </button>
+          {!isReadOnly && (
+            <div className="flex gap-2 w-full md:w-auto">
+              <button
+                onClick={handleShareLink}
+                className="bg-gray-700 text-yellow-400 px-4 py-2 rounded-md font-semibold hover:bg-gray-600 transition-colors shadow-md text-sm md:text-base flex-1 md:flex-none"
+                title="Copy read-only link to share"
+              >
+                🔗 Share Read-Only Link
+              </button>
+              <button
+                onClick={() => {
+                  if (handleEditAction()) {
+                    setShowCSVUpload(true);
+                  }
+                }}
+                className="bg-gray-700 text-yellow-400 px-4 py-2 rounded-md font-semibold hover:bg-gray-600 transition-colors shadow-md text-sm md:text-base flex-1 md:flex-none"
+              >
+                📄 Upload CSV
+              </button>
+              <button
+                onClick={() => {
+                  if (handleEditAction()) {
+                    setShowAddForm(true);
+                  }
+                }}
+                className="bg-yellow-400 text-black px-4 py-2 rounded-md font-semibold hover:bg-yellow-500 transition-colors shadow-md text-sm md:text-base flex-1 md:flex-none"
+              >
+                + Add Your Profile
+              </button>
+              {isAuthenticated && (
+                <button
+                  onClick={() => {
+                    sessionStorage.removeItem('internship_map_authenticated');
+                    setIsAuthenticated(false);
+                    setShowPasswordPrompt(true);
+                  }}
+                  className="bg-gray-600 text-yellow-400 px-3 py-2 rounded-md font-semibold hover:bg-gray-500 transition-colors shadow-md text-xs"
+                  title="Logout"
+                >
+                  Logout
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
       {/* Map Container */}
-      <main className="flex-1 relative">
+      <main className="flex-1 flex flex-col">
         {isLoading ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+          <div className="flex-1 flex items-center justify-center bg-gray-100">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
               <p className="text-gray-600">Loading...</p>
             </div>
           </div>
         ) : (
           <>
-            <Map profiles={filteredProfiles} onMarkerClick={handleMarkerClick} />
-            <FieldFilter
-              selectedFields={selectedFields}
-              onFieldsChange={setSelectedFields}
-            />
-            <TravelTimeFilter
-              filterType={filterType}
-              filterTime={filterTime}
-              onFilterTypeChange={setFilterType}
-              onFilterTimeChange={setFilterTime}
-            />
+            <div className="h-[75vh] min-h-[500px] relative flex-shrink-0">
+              <Map profiles={filteredProfiles} onMarkerClick={handleMarkerClick} />
+              <FilterPanel
+                locationType={locationType}
+                onLocationTypeChange={setLocationType}
+                filterType={filterType}
+                filterTime={filterTime}
+                onFilterTypeChange={setFilterType}
+                onFilterTimeChange={setFilterTime}
+                selectedFields={selectedFields}
+                onFieldsChange={setSelectedFields}
+              />
+            </div>
+            
+            {/* Remote Internships Section */}
+            {(locationType === 'all' || locationType === 'remote') && (
+              <div className="bg-white border-t border-gray-200 shadow-lg flex-shrink-0">
+                <div className="container mx-auto px-4 py-4">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-3">
+                    Remote Internships {remoteProfiles.length > 0 && `(${remoteProfiles.length})`}
+                  </h2>
+                  {remoteProfiles.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {remoteProfiles.map((profile) => (
+                        <button
+                          key={profile.id}
+                          onClick={() => setSelectedProfile(profile)}
+                          className="text-left p-4 border border-gray-200 rounded-lg hover:border-yellow-400 hover:shadow-md transition-all bg-white"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="font-semibold text-gray-900">
+                              {profile.internshipCompany}
+                            </h3>
+                            {profile.isRemote && (
+                              <span className="ml-2 px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+                                Remote
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mb-1">
+                            {profile.firstName} {profile.lastName}
+                          </p>
+                          <p className="text-sm text-gray-500 mb-2 capitalize">
+                            {profile.field}
+                          </p>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <span key={star} className="text-sm">
+                                {star <= profile.rating ? '⭐' : '☆'}
+                              </span>
+                            ))}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-8">
+                      No remote internships found. {locationType === 'remote' && 'Try selecting "All" to see both physical and remote internships.'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
 
         {/* Empty State */}
         {!isLoading && profiles.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+          <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center p-8">
               <p className="text-xl text-gray-600 mb-4">No profiles yet</p>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="bg-blue-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-blue-700 transition-colors"
+                className="bg-yellow-400 text-black px-6 py-3 rounded-md font-semibold hover:bg-yellow-500 transition-colors"
               >
                 Add the First Profile
               </button>
@@ -246,6 +431,18 @@ function App() {
         <AddProfileForm
           onClose={() => setShowAddForm(false)}
           onProfileAdded={handleProfileAdded}
+        />
+      )}
+      {showCSVUpload && (
+        <CSVUpload
+          onClose={() => setShowCSVUpload(false)}
+          onProfilesAdded={handleCSVProfilesAdded}
+        />
+      )}
+      {showPasswordPrompt && (
+        <PasswordPrompt
+          onSuccess={handlePasswordSuccess}
+          isRequired={true}
         />
       )}
     </div>

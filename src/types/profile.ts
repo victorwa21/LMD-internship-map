@@ -24,14 +24,25 @@ export interface StudentProfile {
   email: string;
   internshipCompany: string;
   field: string; // Internship field/type
-  internshipContactName: string; // Contact person name
-  internshipSiteEmail: string; // Contact email
-  internshipAddress: InternshipAddress;
-  coordinates: Coordinates;
-  accomplishments: string;
-  travelTime?: TravelTime;
+  internshipContactName: string; // Internship supervisor name
+  internshipSiteEmail: string; // Internship supervisor email
+  isRemote: boolean; // Whether the internship is remote
+  internshipAddress?: InternshipAddress; // Optional if remote
+  coordinates?: Coordinates; // Optional if remote
+  startDate: string; // Internship start date (ISO format)
+  endDate: string; // Internship end date (ISO format)
+  // Required questions
+  question1_whatMadeUnique: string; // What made this internship experience unique or different from what you expected?
+  question2_meaningfulContribution: string; // What was the most meaningful project or contribution you made during your internship?
+  question3_skillsLearned: string; // What skills or insights did you gain that you couldn't have learned in a traditional classroom?
+  // Optional questions
+  question4_mostSurprising?: string; // What was the most surprising or unexpected thing you discovered during this internship?
+  question5_specificMoment?: string; // Describe a specific moment or project where you felt you made a real impact.
+  question6_futureGoals?: string; // How has this internship influenced your future goals or career interests?
+  travelTime?: TravelTime; // Optional if remote
   rating: number; // 1-5 stars (required)
   ratingComment: string; // Required comment about the rating
+  photos?: string[]; // Array of base64-encoded image strings (optional)
   createdAt: string;
   updatedAt: string;
 }

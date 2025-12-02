@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StudentProfile } from '../types/profile';
 
 interface ProfileModalProps {
@@ -7,6 +7,9 @@ interface ProfileModalProps {
 }
 
 export default function ProfileModal({ profile, onClose }: ProfileModalProps) {
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   useEffect(() => {
     if (profile) {
       document.body.style.overflow = 'hidden';
@@ -20,15 +23,59 @@ export default function ProfileModal({ profile, onClose }: ProfileModalProps) {
   }, [profile]);
 
   useEffect(() => {
+    // Reset photo index when profile changes
+    setCurrentPhotoIndex(0);
+  }, [profile?.id]);
+
+  const handlePreviousPhoto = () => {
+    if (!profile?.photos) return;
+    setCurrentPhotoIndex((prev) => 
+      prev === 0 ? profile.photos!.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextPhoto = () => {
+    if (!profile?.photos) return;
+    setCurrentPhotoIndex((prev) => 
+      prev === profile.photos!.length - 1 ? 0 : prev + 1
+    );
+  };
+
+  const handlePhotoClick = () => {
+    setIsFullscreen(true);
+  };
+
+  useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && profile) {
-        onClose();
+      if (e.key === 'Escape') {
+        if (isFullscreen) {
+          setIsFullscreen(false);
+        } else if (profile) {
+          onClose();
+        }
+      }
+    };
+
+    const handleArrowKeys = (e: KeyboardEvent) => {
+      if (!isFullscreen || !profile?.photos) return;
+      if (e.key === 'ArrowLeft') {
+        setCurrentPhotoIndex((prev) => 
+          prev === 0 ? profile.photos!.length - 1 : prev - 1
+        );
+      } else if (e.key === 'ArrowRight') {
+        setCurrentPhotoIndex((prev) => 
+          prev === profile.photos!.length - 1 ? 0 : prev + 1
+        );
       }
     };
 
     window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [profile, onClose]);
+    window.addEventListener('keydown', handleArrowKeys);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('keydown', handleArrowKeys);
+    };
+  }, [profile, onClose, isFullscreen]);
 
   if (!profile) return null;
 
@@ -78,7 +125,14 @@ export default function ProfileModal({ profile, onClose }: ProfileModalProps) {
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
               Internship Company
             </h3>
-            <p className="text-lg text-gray-900">{profile.internshipCompany}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-lg text-gray-900">{profile.internshipCompany}</p>
+              {profile.isRemote && (
+                <span className="px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-full">
+                  Remote
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Field */}
@@ -89,41 +143,61 @@ export default function ProfileModal({ profile, onClose }: ProfileModalProps) {
             <p className="text-gray-900 capitalize">{profile.field}</p>
           </div>
 
-          {/* Contact Information */}
+          {/* Dates */}
           <div>
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Internship Contact
+              Internship Period
+            </h3>
+            <p className="text-gray-900">
+              {new Date(profile.startDate).toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })} - {new Date(profile.endDate).toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </p>
+          </div>
+
+          {/* Internship Supervisor */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Internship Supervisor
             </h3>
             <p className="text-gray-900">{profile.internshipContactName}</p>
             <a
               href={`mailto:${profile.internshipSiteEmail}`}
-              className="text-blue-600 hover:text-blue-800 underline text-sm"
+              className="text-yellow-600 hover:text-yellow-700 underline text-sm"
             >
               {profile.internshipSiteEmail}
             </a>
           </div>
 
           {/* Address */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Address
-            </h3>
-            <p className="text-gray-900">{profile.internshipAddress.fullAddress}</p>
-          </div>
+          {!profile.isRemote && profile.internshipAddress && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                Address
+              </h3>
+              <p className="text-gray-900">{profile.internshipAddress.fullAddress}</p>
+            </div>
+          )}
 
           {/* Travel Time */}
-          {profile.travelTime && ((profile.travelTime.driving !== undefined && profile.travelTime.driving > 0) || (profile.travelTime.walking !== undefined && profile.travelTime.walking > 0) || (profile.travelTime.bus !== undefined && profile.travelTime.bus > 0)) && (
+          {!profile.isRemote && profile.travelTime && ((profile.travelTime.driving !== undefined && profile.travelTime.driving > 0) || (profile.travelTime.walking !== undefined && profile.travelTime.walking > 0) || (profile.travelTime.bus !== undefined && profile.travelTime.bus > 0)) && (
             <div>
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
                 Travel Time from School
               </h3>
               <div className="grid grid-cols-3 gap-3">
                 {profile.travelTime.driving !== undefined && profile.travelTime.driving > 0 && (
-                  <div className="flex items-center p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center p-3 bg-yellow-50 rounded-lg">
                     <span className="text-2xl mr-2">🚗</span>
                     <div>
                       <p className="text-xs text-gray-500">Car</p>
-                      <p className="text-lg font-semibold text-blue-600">
+                      <p className="text-lg font-semibold text-yellow-600">
                         {profile.travelTime.driving} min
                       </p>
                     </div>
@@ -177,15 +251,173 @@ export default function ProfileModal({ profile, onClose }: ProfileModalProps) {
             </div>
           </div>
 
-          {/* Accomplishments */}
+          {/* Required Questions */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              Accomplishments & Learnings
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Internship Experience
             </h3>
-            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-              {profile.accomplishments}
-            </p>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  What made this internship experience unique or different from what you expected?
+                </h4>
+                <p className="text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  {profile.question1_whatMadeUnique}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  What was the most meaningful project or contribution you made during your internship?
+                </h4>
+                <p className="text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  {profile.question2_meaningfulContribution}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  What skills or insights did you gain that you couldn't have learned in a traditional classroom?
+                </h4>
+                <p className="text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  {profile.question3_skillsLearned}
+                </p>
+              </div>
+            </div>
           </div>
+
+          {/* Optional Questions */}
+          {(profile.question4_mostSurprising || profile.question5_specificMoment || profile.question6_futureGoals) && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                Additional Insights
+              </h3>
+              <div className="space-y-4">
+                {profile.question4_mostSurprising && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      What was the most surprising or unexpected thing you discovered during this internship?
+                    </h4>
+                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      {profile.question4_mostSurprising}
+                    </p>
+                  </div>
+                )}
+                {profile.question5_specificMoment && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Describe a specific moment or project where you felt you made a real impact.
+                    </h4>
+                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      {profile.question5_specificMoment}
+                    </p>
+                  </div>
+                )}
+                {profile.question6_futureGoals && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      How has this internship influenced your future goals or career interests?
+                    </h4>
+                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      {profile.question6_futureGoals}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Photos Slideshow */}
+          {profile.photos && profile.photos.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                Photos ({profile.photos.length})
+              </h3>
+              <div className="relative">
+                {/* Main Photo Display */}
+                <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-video mb-3">
+                  <img
+                    src={profile.photos[currentPhotoIndex]}
+                    alt={`Photo ${currentPhotoIndex + 1} of ${profile.photos.length}`}
+                    className="w-full h-full object-contain cursor-pointer"
+                    onClick={handlePhotoClick}
+                  />
+                  
+                  {/* Navigation Arrows */}
+                  {profile.photos.length > 1 && (
+                    <>
+                      <button
+                        onClick={handlePreviousPhoto}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
+                        aria-label="Previous photo"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={handleNextPhoto}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
+                        aria-label="Next photo"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+                  
+                  {/* Photo Counter */}
+                  {profile.photos.length > 1 && (
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                      {currentPhotoIndex + 1} / {profile.photos.length}
+                    </div>
+                  )}
+                </div>
+
+                {/* Thumbnail Strip */}
+                {profile.photos.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {profile.photos.map((photo, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentPhotoIndex(index)}
+                        className={`flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border-2 transition-all ${
+                          index === currentPhotoIndex
+                            ? 'border-yellow-500 ring-2 ring-yellow-300'
+                            : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <img
+                          src={photo}
+                          alt={`Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Contact Information */}
           <div className="border-t border-gray-200 pt-6">
@@ -209,7 +441,7 @@ export default function ProfileModal({ profile, onClose }: ProfileModalProps) {
                 </svg>
                 <a
                   href={`mailto:${profile.email}`}
-                  className="text-blue-600 hover:text-blue-800 underline"
+                  className="text-yellow-600 hover:text-yellow-700 underline"
                 >
                   {profile.email}
                 </a>
@@ -218,6 +450,96 @@ export default function ProfileModal({ profile, onClose }: ProfileModalProps) {
           </div>
         </div>
       </div>
+
+      {/* Fullscreen Photo Modal */}
+      {isFullscreen && profile.photos && (
+        <div
+          className="fixed inset-0 z-[10000] bg-black bg-opacity-95 flex items-center justify-center p-4"
+          onClick={() => setIsFullscreen(false)}
+        >
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+            aria-label="Close fullscreen"
+          >
+            <svg
+              className="w-8 h-8"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+          
+          {profile.photos.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePreviousPhoto();
+                }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-20 text-white p-3 rounded-full hover:bg-opacity-30 transition-opacity"
+                aria-label="Previous photo"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNextPhoto();
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white bg-opacity-20 text-white p-3 rounded-full hover:bg-opacity-30 transition-opacity"
+                aria-label="Next photo"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </>
+          )}
+          
+          <img
+            src={profile.photos[currentPhotoIndex]}
+            alt={`Photo ${currentPhotoIndex + 1} of ${profile.photos.length}`}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          
+          {profile.photos.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm">
+              {currentPhotoIndex + 1} / {profile.photos.length}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -4,13 +4,28 @@ import { StudentProfile } from '../types/profile';
 import { PITTSBURGH_CENTER, SCHOOL_LOCATION } from '../services/mapsService';
 import 'leaflet/dist/leaflet.css';
 
-// Blue dot icon for internship markers
-const internshipIcon = divIcon({
-  className: 'internship-marker',
+// Blue dot icon for sample internship markers
+const sampleInternshipIcon = divIcon({
+  className: 'sample-internship-marker',
   html: `<div style="
     width: 20px;
     height: 20px;
     background-color: #2563eb;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  "></div>`,
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+});
+
+// Green dot icon for user-added internship markers
+const userInternshipIcon = divIcon({
+  className: 'user-internship-marker',
+  html: `<div style="
+    width: 20px;
+    height: 20px;
+    background-color: #16a34a;
     border: 3px solid white;
     border-radius: 50%;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
@@ -82,19 +97,25 @@ export default function Map({ profiles, onMarkerClick }: MapProps) {
           </Popup>
         </Marker>
         
-        {/* Internship Profile Markers */}
-        {profiles.map((profile) => (
-          <Marker
-            key={profile.id}
-            position={[profile.coordinates.lat, profile.coordinates.lng]}
-            icon={internshipIcon}
-            eventHandlers={{
-              click: () => {
-                onMarkerClick(profile);
-              },
-            }}
-          />
-        ))}
+        {/* Internship Profile Markers - Only show non-remote internships */}
+        {profiles
+          .filter((profile) => !profile.isRemote && profile.coordinates)
+          .map((profile) => {
+            // Check if this is a user-added profile (not a sample profile)
+            const isUserAdded = !profile.id.startsWith('sample_');
+            return (
+              <Marker
+                key={profile.id}
+                position={[profile.coordinates!.lat, profile.coordinates!.lng]}
+                icon={isUserAdded ? userInternshipIcon : sampleInternshipIcon}
+                eventHandlers={{
+                  click: () => {
+                    onMarkerClick(profile);
+                  },
+                }}
+              />
+            );
+          })}
       </MapContainer>
     </div>
   );
