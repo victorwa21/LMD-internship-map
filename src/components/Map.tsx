@@ -19,13 +19,13 @@ const sampleInternshipIcon = divIcon({
   iconAnchor: [10, 10],
 });
 
-// Green dot icon for user-added internship markers
+// Yellow dot icon for user-added internship markers (matches theme)
 const userInternshipIcon = divIcon({
   className: 'user-internship-marker',
   html: `<div style="
     width: 20px;
     height: 20px;
-    background-color: #16a34a;
+    background-color: #facc15;
     border: 3px solid white;
     border-radius: 50%;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);

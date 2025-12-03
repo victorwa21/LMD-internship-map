@@ -120,6 +120,96 @@ export default function ProfileModal({ profile, onClose }: ProfileModalProps) {
         </div>
 
         <div className="px-6 py-6 space-y-6">
+          {/* Photos Slideshow - Moved to top */}
+          {profile.photos && profile.photos.length > 0 && (
+            <div>
+              <div className="relative">
+                {/* Main Photo Display */}
+                <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-video mb-3">
+                  <img
+                    src={profile.photos[currentPhotoIndex]}
+                    alt={`Photo ${currentPhotoIndex + 1} of ${profile.photos.length}`}
+                    className="w-full h-full object-contain cursor-pointer"
+                    onClick={handlePhotoClick}
+                  />
+                  
+                  {/* Navigation Arrows */}
+                  {profile.photos.length > 1 && (
+                    <>
+                      <button
+                        onClick={handlePreviousPhoto}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
+                        aria-label="Previous photo"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={handleNextPhoto}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
+                        aria-label="Next photo"
+                      >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+                  
+                  {/* Photo Counter */}
+                  {profile.photos.length > 1 && (
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                      {currentPhotoIndex + 1} / {profile.photos.length}
+                    </div>
+                  )}
+                </div>
+
+                {/* Thumbnail Strip */}
+                {profile.photos.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {profile.photos.map((photo, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentPhotoIndex(index)}
+                        className={`flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border-2 transition-all ${
+                          index === currentPhotoIndex
+                            ? 'border-yellow-500 ring-2 ring-yellow-300'
+                            : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <img
+                          src={photo}
+                          alt={`Thumbnail ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           {/* Internship Company */}
           <div>
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
@@ -325,99 +415,6 @@ export default function ProfileModal({ profile, onClose }: ProfileModalProps) {
             </div>
           )}
 
-          {/* Photos Slideshow */}
-          {profile.photos && profile.photos.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                Photos ({profile.photos.length})
-              </h3>
-              <div className="relative">
-                {/* Main Photo Display */}
-                <div className="relative bg-gray-100 rounded-lg overflow-hidden aspect-video mb-3">
-                  <img
-                    src={profile.photos[currentPhotoIndex]}
-                    alt={`Photo ${currentPhotoIndex + 1} of ${profile.photos.length}`}
-                    className="w-full h-full object-contain cursor-pointer"
-                    onClick={handlePhotoClick}
-                  />
-                  
-                  {/* Navigation Arrows */}
-                  {profile.photos.length > 1 && (
-                    <>
-                      <button
-                        onClick={handlePreviousPhoto}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
-                        aria-label="Previous photo"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={handleNextPhoto}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-opacity"
-                        aria-label="Next photo"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </button>
-                    </>
-                  )}
-                  
-                  {/* Photo Counter */}
-                  {profile.photos.length > 1 && (
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-                      {currentPhotoIndex + 1} / {profile.photos.length}
-                    </div>
-                  )}
-                </div>
-
-                {/* Thumbnail Strip */}
-                {profile.photos.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    {profile.photos.map((photo, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentPhotoIndex(index)}
-                        className={`flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border-2 transition-all ${
-                          index === currentPhotoIndex
-                            ? 'border-yellow-500 ring-2 ring-yellow-300'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        <img
-                          src={photo}
-                          alt={`Thumbnail ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* Contact Information */}
           <div className="border-t border-gray-200 pt-6">

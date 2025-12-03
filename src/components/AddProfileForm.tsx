@@ -52,12 +52,12 @@ export default function AddProfileForm({ onClose, onProfileAdded }: AddProfileFo
       travelTimeDriving: '',
       travelTimeWalking: '',
       travelTimeBus: '',
-      question1_whatMadeUnique: '',
-      question2_meaningfulContribution: '',
-      question3_skillsLearned: '',
-      question4_mostSurprising: '',
-      question5_specificMoment: '',
-      question6_futureGoals: '',
+      question1_whatMadeUnique: 'I expected it to be more structured, but I got to work on real projects and see actual results. The hands-on experience was completely different from what I expected, and I learned so much more than I thought I would.',
+      question2_meaningfulContribution: 'I helped create a project that\'s now being used by the organization. Seeing something I made being used was incredible.',
+      question3_skillsLearned: 'I learned practical skills and how to use tools, but I also learned problem-solving, how to work with others, and how to manage projects - skills that apply to so many areas of life.',
+      question4_mostSurprising: 'How much goes on behind the scenes that I never knew about. The organization does so much more than I expected, and I got to be part of it.',
+      question5_specificMoment: 'When I saw the impact of my work firsthand. That moment of seeing something I created or contributed to being used was incredible.',
+      question6_futureGoals: 'This internship has influenced my career interests and confirmed that I want to pursue work in this field. I\'m now considering related career paths.',
       rating: 0,
       ratingComment: '',
     },
@@ -238,7 +238,7 @@ export default function AddProfileForm({ onClose, onProfileAdded }: AddProfileFo
   const getStepTitle = () => {
     switch (currentStep) {
       case 1: return 'Basic Information';
-      case 2: return 'Required Questions';
+      case 2: return 'What did you learn';
       case 3: return 'Optional Questions';
       case 4: return 'Rating & Photos';
       default: return 'Add Your Profile';
@@ -342,17 +342,17 @@ export default function AddProfileForm({ onClose, onProfileAdded }: AddProfileFo
             </button>
           </div>
           {/* Step Progress Indicator */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4 w-full">
             {[1, 2, 3, 4].map((step) => {
-              const stepLabels = ['Basic Info', 'Required', 'Optional', 'Rating'];
+              const stepLabels = ['Basic Info', 'What did you learn', 'Optional Questions', 'Rating'];
               const isActive = currentStep === step;
               const isCompleted = currentStep > step;
               
               return (
-                <div key={step} className="flex items-center flex-1">
-                  <div className="flex items-center flex-1">
+                <div key={step} className="flex items-center flex-1 min-w-0">
+                  <div className="flex flex-col items-center flex-1 min-w-0">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-colors flex-shrink-0 ${
                         isActive
                           ? 'bg-yellow-400 text-black'
                           : isCompleted
@@ -362,14 +362,14 @@ export default function AddProfileForm({ onClose, onProfileAdded }: AddProfileFo
                     >
                       {step}
                     </div>
-                    <span className={`ml-2 text-xs hidden sm:block ${
+                    <span className={`mt-2 text-xs text-center whitespace-nowrap ${
                       isActive ? 'text-gray-900 font-medium' : 'text-gray-500'
                     }`}>
                       {stepLabels[step - 1]}
                     </span>
                   </div>
                   {step < 4 && (
-                    <div className={`h-1 flex-1 mx-1 ${
+                    <div className={`h-1 flex-1 mx-2 min-w-[20px] ${
                       isCompleted ? 'bg-yellow-200' : 'bg-gray-200'
                     }`} />
                   )}

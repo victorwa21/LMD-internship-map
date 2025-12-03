@@ -155,6 +155,142 @@ function App() {
       localStorage.setItem(ratingMigrationKey, 'true');
     }
     
+    // Migration for question fields and dates
+    const questionsMigrationKey = 'internship_map_questions_dates_migrated';
+    const needsQuestionsMigration = !localStorage.getItem(questionsMigrationKey);
+    
+    if (needsQuestionsMigration || loadedProfiles.some(p => 
+      !p.question1_whatMadeUnique || 
+      !p.question2_meaningfulContribution || 
+      !p.question3_skillsLearned ||
+      !p.startDate ||
+      !p.endDate
+    )) {
+      const generateDummyData = (profile: StudentProfile) => {
+        const field = profile.field.toLowerCase();
+        const company = profile.internshipCompany.toLowerCase();
+        
+        // Generate dates (default to 4-month internship starting 3 months ago)
+        const now = new Date();
+        const startDate = profile.startDate || new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const endDate = profile.endDate || new Date(new Date(startDate).getTime() + 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        // Generate question responses based on field
+        const getQuestion1 = () => {
+          if (field.includes('library') || field.includes('education')) {
+            return 'I expected it to be more traditional, but it was actually really dynamic! The organization hosts community events and programs that I never expected. I got to work directly with people and see real impact, which was amazing.';
+          } else if (field.includes('health') || field.includes('therapy') || field.includes('veterinary')) {
+            return 'I thought I\'d just be shadowing, but I actually got to assist with real procedures and work directly with patients/clients. The team treated me like part of the team, not just a student observer.';
+          } else if (field.includes('art') || field.includes('writing') || field.includes('podcast')) {
+            return 'I expected to just learn technical skills, but I got to work on real projects that actually get published or broadcast! The team let me create my own content from start to finish.';
+          } else if (field.includes('tech') || field.includes('coding') || field.includes('robotics')) {
+            return 'I expected to just learn programming, but I got to work on real projects that actually get used! The team environment was amazing - we problem-solved together and celebrated wins.';
+          } else if (field.includes('remote') || field.includes('consulting')) {
+            return 'I expected remote work to be isolating, but the team had daily check-ins and virtual meetings. I got to work with people from all over, which was amazing.';
+          } else {
+            return 'I expected it to be more structured, but I got to work on real projects and see actual results. The hands-on experience was completely different from what I expected, and I learned so much more than I thought I would.';
+          }
+        };
+        
+        const getQuestion2 = () => {
+          if (field.includes('library') || field.includes('education')) {
+            return 'I created a new system for organizing resources that made it easier for people to find what they needed. The organization still uses it!';
+          } else if (field.includes('health') || field.includes('therapy') || field.includes('veterinary')) {
+            return 'I helped develop a new system for tracking patient information that reduced errors. The clinic still uses it, and it\'s helped improve patient care.';
+          } else if (field.includes('art') || field.includes('writing') || field.includes('podcast')) {
+            return 'I produced a project that got published/broadcast. Seeing my work out in the world was incredible.';
+          } else if (field.includes('tech') || field.includes('coding') || field.includes('robotics')) {
+            return 'I programmed a feature/system that helped improve efficiency. Seeing code I wrote make a real difference was incredible.';
+          } else if (field.includes('remote') || field.includes('consulting')) {
+            return 'I built a tool/system that streamlined the team\'s workflow. It\'s now used regularly and has improved efficiency.';
+          } else {
+            return 'I helped create a project that\'s now being used by the organization. Seeing something I made being used was incredible.';
+          }
+        };
+        
+        const getQuestion3 = () => {
+          if (field.includes('library') || field.includes('education')) {
+            return 'I learned how to work with diverse groups of people, manage programs, and engage communities. These are real-world skills you can\'t learn from a textbook - especially the patience and communication needed when working with different age groups.';
+          } else if (field.includes('health') || field.includes('therapy') || field.includes('veterinary')) {
+            return 'I learned how to read charts, understand terminology, and see how care actually works in real time. You can\'t learn the patience and empathy needed for healthcare from a book.';
+          } else if (field.includes('art') || field.includes('writing') || field.includes('podcast')) {
+            return 'I learned technical skills like editing and production, but I also learned how to tell stories, work with people, and make creative decisions under deadlines - skills you can only get from real experience.';
+          } else if (field.includes('tech') || field.includes('coding') || field.includes('robotics')) {
+            return 'I learned programming and technical skills, but I also learned how to debug complex systems, work in a team, and think through problems systematically - skills that go way beyond what you learn in class.';
+          } else if (field.includes('remote') || field.includes('consulting')) {
+            return 'I learned technical skills, but more importantly, I learned time management, self-discipline, and how to communicate effectively in a remote environment - skills that are crucial in today\'s workforce.';
+          } else {
+            return 'I learned practical skills and how to use tools, but I also learned problem-solving, how to work with others, and how to manage projects - skills that apply to so many areas of life.';
+          }
+        };
+        
+        return {
+          startDate,
+          endDate,
+          question1_whatMadeUnique: profile.question1_whatMadeUnique || getQuestion1(),
+          question2_meaningfulContribution: profile.question2_meaningfulContribution || getQuestion2(),
+          question3_skillsLearned: profile.question3_skillsLearned || getQuestion3(),
+          question4_mostSurprising: profile.question4_mostSurprising || 'How much goes on behind the scenes that I never knew about. The organization does so much more than I expected, and I got to be part of it.',
+          question5_specificMoment: profile.question5_specificMoment || 'When I saw the impact of my work firsthand. That moment of seeing something I created or contributed to being used was incredible.',
+          question6_futureGoals: profile.question6_futureGoals || 'This internship has influenced my career interests and confirmed that I want to pursue work in this field. I\'m now considering related career paths.',
+        };
+      };
+      
+      const updatedProfiles = loadedProfiles.map((profile) => {
+        // Try to find matching sample profile first
+        let sampleMatch = sampleProfiles.find(s => s.id === profile.id);
+        if (!sampleMatch) {
+          sampleMatch = sampleProfiles.find(s => 
+            s.internshipCompany === profile.internshipCompany &&
+            s.coordinates && profile.coordinates &&
+            Math.abs(s.coordinates.lat - profile.coordinates.lat) < 0.01 &&
+            Math.abs(s.coordinates.lng - profile.coordinates.lng) < 0.01
+          );
+        }
+        
+        // Use sample data if available, otherwise generate dummy data
+        if (sampleMatch && (
+          !profile.question1_whatMadeUnique || 
+          !profile.question2_meaningfulContribution || 
+          !profile.question3_skillsLearned ||
+          !profile.startDate ||
+          !profile.endDate
+        )) {
+          const updated = {
+            ...profile,
+            startDate: profile.startDate || sampleMatch.startDate,
+            endDate: profile.endDate || sampleMatch.endDate,
+            question1_whatMadeUnique: profile.question1_whatMadeUnique || sampleMatch.question1_whatMadeUnique,
+            question2_meaningfulContribution: profile.question2_meaningfulContribution || sampleMatch.question2_meaningfulContribution,
+            question3_skillsLearned: profile.question3_skillsLearned || sampleMatch.question3_skillsLearned,
+            question4_mostSurprising: profile.question4_mostSurprising || sampleMatch.question4_mostSurprising,
+            question5_specificMoment: profile.question5_specificMoment || sampleMatch.question5_specificMoment,
+            question6_futureGoals: profile.question6_futureGoals || sampleMatch.question6_futureGoals,
+          };
+          saveProfile(updated);
+          return updated;
+        } else if (
+          !profile.question1_whatMadeUnique || 
+          !profile.question2_meaningfulContribution || 
+          !profile.question3_skillsLearned ||
+          !profile.startDate ||
+          !profile.endDate
+        ) {
+          const dummyData = generateDummyData(profile);
+          const updated = {
+            ...profile,
+            ...dummyData,
+          };
+          saveProfile(updated);
+          return updated;
+        }
+        return profile;
+      });
+      
+      loadedProfiles = updatedProfiles;
+      localStorage.setItem(questionsMigrationKey, 'true');
+    }
+    
     // Filter out test profiles with "asdf" in the name and remove from localStorage
     const cleanedProfiles = loadedProfiles.filter((profile) => {
       const hasAsdf = profile.firstName.toLowerCase().includes('asdf') || 
@@ -364,11 +500,17 @@ function App() {
                   </h2>
                   {remoteProfiles.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {remoteProfiles.map((profile) => (
+                      {remoteProfiles.map((profile) => {
+                        const isUserAdded = !profile.id.startsWith('sample_');
+                        return (
                         <button
                           key={profile.id}
                           onClick={() => setSelectedProfile(profile)}
-                          className="text-left p-4 border border-gray-200 rounded-lg hover:border-yellow-400 hover:shadow-md transition-all bg-white"
+                          className={`text-left p-4 rounded-lg hover:shadow-md transition-all bg-white ${
+                            isUserAdded 
+                              ? 'border-2 border-yellow-400 hover:border-yellow-500' 
+                              : 'border border-gray-200 hover:border-yellow-400'
+                          }`}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <h3 className="font-semibold text-gray-900">
@@ -394,7 +536,8 @@ function App() {
                             ))}
                           </div>
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-gray-500 text-center py-8">
